@@ -1,1 +1,128 @@
-vhdl work "C:\Xilinx91i\tecnicas1\tecnicas1.vhd"
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity ContadorFinal is
+    port (
+        reloj: in std_logic;        -- Señal de reloj principal (CCLK)
+        Enable: out std_logic_vector (2 downto 0);
+        sw1: in std_logic;
+        salida: out std_logic_vector (7 downto 0)
+    );
+end ContadorFinal;
+
+architecture Behavioral of ContadorFinal is
+    -- Declaración de señales
+    signal segundo: integer range 0 to 119999999 := 0;
+    signal unidad: integer range 0 to 9 := 0;
+    signal decenas: integer range 0 to 9 := 0;
+    signal centenas: integer range 0 to 9 := 0;
+    signal bandera: std_logic_vector(2 downto 0) := "000";
+    signal numero: integer range 0 to 9 := 0;
+    signal msegundo: integer range 0 to 1199999 := 0;
+    signal salida2: std_logic_vector(7 downto 0) := (others => '0'); -- Inicialización explícita
+
+begin
+
+    process(reloj)
+    begin
+        if rising_edge(reloj) then
+            if sw1 = '0' then       -- Botón de Reset
+                if segundo = 119999999 then       -- Ciclo de un 1 segundo para incrementar el contador
+                    segundo <= 0;
+                    if (centenas = 9 and decenas = 9 and unidad = 9) then
+                        unidad <= 0;
+                        decenas <= 0;
+                        centenas <= 0;
+                    else
+                        if unidad = 9 then
+                            unidad <= 0;
+                            if decenas = 9 then
+                                decenas <= 0;
+                                centenas <= centenas + 1;
+                            else
+                                decenas <= decenas + 1;
+                            end if;
+                        else
+                            unidad <= unidad + 1;
+                        end if;
+                    end if;
+                else
+                    segundo <= segundo + 1;
+                end if;
+            else
+                if segundo = 119999999 then       -- Ciclo de un 1 segundo para incrementar el contador
+                    segundo <= 0;
+                    if (centenas = 9 and decenas = 9 and unidad = 5) then
+                        unidad <= 0;
+                        decenas <= 0;
+                        centenas <= 0;
+                    else
+                        if unidad = 5 then
+                            unidad <= 0;
+                            if decenas = 9 then
+                                decenas <= 0;
+                                centenas <= centenas + 1;
+                            else
+                                decenas <= decenas + 1;
+                            end if;
+                        else
+                            unidad <= unidad + 5;
+                        end if;
+                    end if;
+                else
+                    segundo <= segundo + 1;
+                end if;
+            end if;
+        end if;
+    end process;
+
+    process (reloj)
+    begin
+        if rising_edge(reloj) then             -- Selección de qué display mostrar
+            if msegundo = 699999 then            -- A un poco más de 100 FPS
+                msegundo <= 0;
+                case bandera is
+                    when "000" =>
+                        numero <= unidad;
+                        Enable <= "110";
+                    when "001" =>
+                        numero <= decenas;
+                        Enable <= "101";
+                    when "010" =>
+                        numero <= centenas;
+                        Enable <= "011";
+                    when others =>
+                        null; -- No debería ocurrir en teoría
+                end case;
+                
+                -- Actualización de bandera para el siguiente ciclo
+                bandera <= std_logic_vector(unsigned(bandera) + 1);  -- Incremento de bandera
+
+                if bandera = "011" then
+                    bandera <= "000";
+                end if;
+            else
+                msegundo <= msegundo + 1;
+            end if;
+
+            case numero is
+                when 0 => salida2 <= "11000000";
+                when 1 => salida2 <= "11111001";
+                when 2 => salida2 <= "10100100";
+                when 3 => salida2 <= "10110000";
+                when 4 => salida2 <= "10011001";
+                when 5 => salida2 <= "10010010";
+                when 6 => salida2 <= "10000010";
+                when 7 => salida2 <= "11111000";
+                when 8 => salida2 <= "10000000";
+                when 9 => salida2 <= "10011000";
+                when others => salida2 <= "11111111";
+            end case;
+
+            salida <= salida2;  -- Asignación a la salida principal
+        end if;
+    end process;
+
+end Behavioral;
+
